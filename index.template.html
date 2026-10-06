@@ -560,7 +560,7 @@ function openDetail(id, edit) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:420px">
         <label class="f"><span class="l">Date</span><input type="date" id="ddDate" value="${esc(dd.date)}"></label>
         <label class="f"><span class="l">Email time</span><input type="time" id="ddTime" value="${esc(dd.time)}"></label></div>
-      ${grp('chat', 'Conversation with the agent')}${grp('instruction', 'Instructions given')}
+      ${grp('chat', 'Conversation with the agent')}${grp('instruction', 'Email Confirmation')}
       <div class="actions"><button class="btn primary" data-act="ddSave">Save changes</button><button class="btn" data-act="ddCancel">Cancel</button><button class="btn" data-act="edit" data-id="${c.id}" style="margin-left:auto">More fields (team lead, type, result)</button></div>`;
   } else {
     ui.dd = null; ui.curDetail = id;
@@ -582,7 +582,7 @@ function openDetail(id, edit) {
         ${row('Last updated', c.updatedBy ? `${c.updatedBy}, ${new Date(c.updatedAt).toLocaleString()}` : '')}
       </dl>
       <h3>Conversation with the agent</h3>${gal('chat')}
-      <h3 style="margin-top:16px">Instructions given</h3>${gal('instruction')}
+      <h3 style="margin-top:16px">Email Confirmation</h3>${gal('instruction')}
       <div class="actions"><button class="btn primary" data-act="editImages" data-id="${c.id}"${locked(c) ? ' disabled' : ''}>Edit</button><button class="btn" data-act="edit" data-id="${c.id}"${locked(c) ? ' disabled' : ''}>Edit all details</button><button class="btn danger" data-act="del" data-id="${c.id}"${locked(c) ? ' disabled' : ''}>Delete</button>${locked(c) ? `<span class="muted" style="align-self:center;font-size:13px">${LOCK_MSG}</span>` : ''}<button class="btn" data-act="closeDetail" style="margin-left:auto">Close</button></div>`;
   }
   const d = $('#detail'); if (!d.open) d.showModal();
@@ -640,7 +640,7 @@ function viewPost() {
   </div>
   <div class="zones" style="margin-top:24px;max-width:920px">
     ${zone('chat', 'Conversation with the agent', 'Screenshots that show you spoke to the agent.')}
-    ${zone('instruction', 'Instructions given', 'Screenshots of the steps or instructions you sent.')}
+    ${zone('instruction', 'Email Confirmation', 'Screenshots of Email Communication.')}
   </div>
   <p class="err" id="formErr" role="alert" hidden></p>
   <div class="actions"><button class="btn primary" data-act="saveCase">${c ? 'Save changes' : 'Post case'}</button><button class="btn" data-act="cancelPost">Cancel</button></div>`;
@@ -1306,7 +1306,7 @@ document.addEventListener('paste', e => {
   }
   if (ui.tab !== 'post' || !e.clipboardData) return;
   const files = [...e.clipboardData.files].filter(f => f.type.startsWith('image/'));
-  if (files.length) { e.preventDefault(); addFiles(files, ui.pasteKind); toast(`Pasted into ${ui.pasteKind === 'chat' ? 'Conversation with the agent' : 'Instructions given'}`); }
+  if (files.length) { e.preventDefault(); addFiles(files, ui.pasteKind); toast(`Pasted into ${ui.pasteKind === 'chat' ? 'Conversation with the agent' : 'Email Confirmation'}`); }
 });
 
 /* ------------------------------------------------------------------ boot */
