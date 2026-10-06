@@ -30,6 +30,9 @@ jobs:
           FB_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FB_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         run: |
+          for v in "$FB_API_KEY" "$FB_AUTH_DOMAIN" "$FB_PROJECT_ID" "$FB_APP_ID"; do
+            if [ -z "$v" ]; then echo "A Firebase secret is missing or empty"; exit 1; fi
+          done
           mkdir site
           sed -e "s|__FIREBASE_API_KEY__|${FB_API_KEY}|" \
               -e "s|__FIREBASE_AUTH_DOMAIN__|${FB_AUTH_DOMAIN}|" \
