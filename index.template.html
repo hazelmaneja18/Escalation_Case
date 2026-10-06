@@ -147,8 +147,8 @@ tfoot td,tfoot th{font-weight:700;border-top:2px solid var(--ink);border-bottom:
 .types label:has(input:focus-visible){outline:3px solid #1F5FBF;outline-offset:2px}
 .types b{display:block}
 .types small{color:var(--muted)}
-.zones{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media(max-width:760px){.zones{grid-template-columns:1fr}}
+.zones{display:grid;grid-template-columns:1fr 1fr minmax(220px,.9fr);gap:18px}
+@media(max-width:900px){.zones{grid-template-columns:1fr}}
 .drop{border:2px dashed #9FAEBB;border-radius:10px;padding:18px 12px;text-align:center;color:var(--muted);cursor:pointer;background:var(--soft)}
 .drop:hover,.drop.over{border-color:var(--ink);color:var(--ink);background:#fff}
 .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:10px}
@@ -198,6 +198,24 @@ dl.meta dd{white-space:pre-wrap}
 .rowact{display:flex;gap:6px;flex-wrap:nowrap}
 .missing{display:flex;align-items:center;justify-content:center;height:84px;background:#FBEAE7;color:var(--bad);font-size:12px;padding:4px;text-align:center}
 #lightbox .cap .nav{display:flex;gap:6px;align-items:center}
+.iconbtn{appearance:none;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink);padding:0}
+.iconbtn:hover{background:var(--soft)}
+.iconbtn.danger{color:var(--bad);border-color:#E3B8B1}
+.iconbtn:disabled{opacity:.4;cursor:not-allowed}
+.remline{margin-top:6px;padding:6px 9px;background:#EAF4F4;border-left:3px solid var(--cx);border-radius:4px;font-size:13px}
+.remline div{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
+.imgrem{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px;align-items:start}
+@media(max-width:760px){.imgrem{grid-template-columns:1fr}}
+.remcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--soft)}
+.remcard textarea{background:#fff}
+.remcard textarea::placeholder{font-style:italic;color:#9AA6B2}
+.remcard textarea:disabled{background:#F0F3F6;cursor:not-allowed}
+.remtext{white-space:pre-wrap;overflow-wrap:anywhere}
+.remtext.wm{font-style:italic;color:#9AA6B2;border:1px dashed #C4CDD6;border-radius:8px;padding:18px 10px;text-align:center}
+.bad{border-color:var(--bad)!important;box-shadow:0 0 0 2px #F3D2CD}
+.drop.bad{color:var(--bad);background:#FFF6F5}
+.req{color:var(--bad);font-weight:700}
+.k-HO{background:#B0457A!important}
 /* dialogs */
 dialog{border:0;border-radius:12px;padding:0;max-width:min(860px,94vw);width:100%;box-shadow:0 20px 60px rgba(10,20,30,.35)}
 dialog::backdrop{background:rgba(15,25,35,.55)}
@@ -291,8 +309,25 @@ const weekStart = iso => { const d = dObj(iso); d.setDate(d.getDate() - ((d.getD
 const eachDay = (from, to) => { const out = []; if (!from) return out; to = to && to >= from ? to : from; for (let d = from, n = 0; d <= to && n < 400; d = addDays(d, 1), n++) out.push(d); return out; };
 /* A VS ticket is an entry that starts with VS-1234, with or without the Jira link in front. Those are not counted. */
 const isVS = e => /^\s*(https?:\/\/\S*\/browse\/)?VS-\d+/i.test(e || '');
-const LEAVE = { VL: 'Vacation leave', SL: 'Sick leave', EL: 'Emergency leave', ABS: 'Absent', ML: 'Maternity leave', PL: 'Paternity leave', RD: 'Rest day', PR: 'Present' };
+const LEAVE = { VL: 'Vacation leave', SL: 'Sick leave', EL: 'Emergency leave', ABS: 'Absent', HO: 'Holiday off', RD: 'Rest day', PR: 'Present' };
+const LEAVE_OLD = { ML: 'Maternity leave', PL: 'Paternity leave' };   // old entries only; no longer offered
+const leaveLabel = k => LEAVE[k] || LEAVE_OLD[k] || k;
 function newDraft() { return { images: [], colab: [] }; }
+const REMARK_WM = 'To be filled by Glenn F or Seth R';
+const fmtStamp = iso => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+const svg = p => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ICON = { view: svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'), edit: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>'), del: svg('<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>') };
+/* Saves or clears the verifier remark. Returns true when something changed; the date and time are recorded here. */
+function setRemark(c, text) {
+  text = (text || '').trim(); if (text === (c.vRemark || '')) return false;
+  if (text) { c.vRemark = text; c.vRemarkAt = new Date().toISOString(); } else { delete c.vRemark; delete c.vRemarkAt; }
+  return true;
+}
+function remarkPanel(c) {
+  const when = c.vRemarkAt ? `Posted ${fmtStamp(c.vRemarkAt)}` : '';
+  if (ui.verifier) return `<aside class="remcard"><h3>Remark</h3><textarea id="dRemark" rows="8" placeholder="${REMARK_WM}" aria-label="Remark">${esc(c.vRemark || '')}</textarea><p class="hint" style="margin:6px 0">${when || 'Saving records the date and time.'}</p><button class="btn small primary" data-act="saveRemark" data-id="${c.id}">Save remark</button></aside>`;
+  return `<aside class="remcard"><h3>Remark</h3>${c.vRemark ? `<div class="remtext">${esc(c.vRemark)}</div><p class="hint" style="margin:6px 0 0">${when}</p>` : `<div class="remtext wm">${REMARK_WM}</div>`}</aside>`;
+}
 
 function periodOf(t) {
   if (!t) return '';
@@ -382,7 +417,18 @@ function normalize() {
   const seen = new Set(); S.loop = S.loop.filter(r => { r.id ||= loopId(r.date, r.email, r.issue); if (seen.has(r.id)) return false; seen.add(r.id); return true; });
   if (!S.suppsMerged) { const set = new Set(S.supps); S.cases.forEach(c => c.colab.forEach(n => set.add(n.toUpperCase()))); S.supps = [...set].sort(); S.suppsMerged = true; }
 }
-const loopRows = () => S.loop.filter(r => !isVS(r.email));
+/* The Loop page lists unresolved cases again every day. A subject counts only on the first day it appears. */
+const subjKey = s => { let x = String(s || '').toLowerCase().replace(/\[(external|ext)\]/g, ' ').replace(/\s+/g, ' ').trim(); for (let p; p !== x;) { p = x; x = x.replace(/^(re|fw|fwd)\s*:\s*/, '').trim(); } return x; };
+const keyCache = new WeakMap();
+const keyOf = r => { let k = keyCache.get(r); if (k === undefined) { k = subjKey(r.email); keyCache.set(r, k); } return k; };
+function loopSplit() {
+  const rows = S.loop.filter(r => !isVS(r.email)), first = new Map();
+  rows.forEach(r => { const k = keyOf(r); if (!k) return; const f = first.get(k); if (!f || r.date < f.date) first.set(k, r); });
+  const keep = [], repeats = [];
+  rows.forEach(r => { const k = keyOf(r); (!k || first.get(k) === r ? keep : repeats).push(r); });
+  return { keep, repeats };
+}
+const loopRows = () => loopSplit().keep;
 function cameIn(pred) { const s = new Set(); loopRows().forEach(r => { if (pred(r.date)) s.add(r.email.trim().toLowerCase()); }); return s.size; }
 const cameOrNull = pred => loopRows().some(r => pred(r.date)) ? cameIn(pred) : null;
 function loopDistinct(month) { return cameIn(d => d.startsWith(month)); }
@@ -497,7 +543,7 @@ function filtered() {
   return S.cases.filter(c =>
     (!f.month || c.month === f.month) && (!f.lead || c.lead === f.lead) && (!f.type || c.type === f.type) &&
     (!f.status || statusOf(c) === f.status) &&
-    (!q || [c.concern, c.caseNo, c.serviceId, c.result, c.colab, c.took, c.remarks, c.instruction, c.lead].join(' ').toLowerCase().includes(q))
+    (!q || [c.concern, c.caseNo, c.serviceId, c.result, c.colab, c.took, c.remarks, c.vRemark, c.instruction, c.lead].join(' ').toLowerCase().includes(q))
   ).sort((a, b) => (b.date || '9999').localeCompare(a.date || '9999') || (b.time || '').localeCompare(a.time || ''));
 }
 const camera = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
@@ -512,12 +558,12 @@ function caseRow(c) {
   return `<tr data-row="${c.id}"${ui.fresh === c.id ? ' class="fresh"' : ''}>
     <td class="nowrap"><b>${fmtDay(c.date)}</b><div class="muted" style="font-size:12.5px">${fmtTime(c.time) || 'No time'}${p ? ' ' + title(p) : ''}</div></td>
     <td>${esc(title(c.lead))}</td>
-    <td class="concern"><button class="linklike" data-act="open" data-id="${c.id}">${esc(c.concern || '(no subject)')}</button>${ids ? `<div class="ids muted">${ids}</div>` : ''}</td>
+    <td class="concern"><button class="linklike" data-act="open" data-id="${c.id}">${esc(c.concern || '(no subject)')}</button>${ids ? `<div class="ids muted">${ids}</div>` : ''}${c.vRemark ? `<div class="remline"><b>Remark</b> <span class="muted">${esc(fmtStamp(c.vRemarkAt))}</span><div>${esc(c.vRemark)}</div></div>` : ''}</td>
     <td>${typeChip(c.type)}</td>
     <td>${vfCell(c)}</td>
     <td class="num">${isVerified(c) ? '+' + pointsOf(c) : '—'}</td>
     <td>${n ? `<div class="rowimgs">${(c.images || []).slice(0, 2).map(i => IMG[i.id] ? `<button data-act="viewImgs" data-id="${c.id}" data-img="${i.id}" aria-label="View image ${esc(i.name)}"><img src="${IMG[i.id]}" alt=""></button>` : '').join('')}${n > 2 ? `<button class="linklike more" data-act="viewImgs" data-id="${c.id}" style="width:auto;height:auto;border:0;background:none">+${n - 2}</button>` : ''}</div>` : '<span class="muted">—</span>'}</td>
-    <td><div class="rowact"><button class="btn small" data-act="open" data-id="${c.id}">View</button><button class="btn small" data-act="editImages" data-id="${c.id}"${locked(c) ? ` disabled title="${LOCK_MSG}"` : ''}>Edit</button><button class="btn small danger" data-act="del" data-id="${c.id}"${locked(c) ? ` disabled title="${LOCK_MSG}"` : ''}>Delete</button></div></td></tr>`;
+    <td><div class="rowact"><button class="iconbtn" data-act="open" data-id="${c.id}" aria-label="View case" title="View">${ICON.view}</button><button class="iconbtn" data-act="editImages" data-id="${c.id}" aria-label="Edit case"${locked(c) ? ` disabled title="${LOCK_MSG}"` : ' title="Edit"'}>${ICON.edit}</button><button class="iconbtn danger" data-act="del" data-id="${c.id}" aria-label="Delete case"${locked(c) ? ` disabled title="${LOCK_MSG}"` : ' title="Delete"'}>${ICON.del}</button></div></td></tr>`;
 }
 function renderCaseRows() {
   const list = filtered(), body = $('#caseBody'); if (!body) return;
@@ -547,7 +593,7 @@ function viewCases() {
 function openDetail(id, edit) {
   const c = S.cases.find(x => x.id === id); if (!c) return;
   if (edit) {
-    if (!ui.dd || ui.dd.id !== id) ui.dd = { id, date: c.date, time: c.time, concern: c.concern || '', images: (c.images || []).map(i => ({ ...i, data: IMG[i.id] || '' })) };
+    if (!ui.dd || ui.dd.id !== id) ui.dd = { id, date: c.date, time: c.time, concern: c.concern || '', vRemark: c.vRemark || '', images: (c.images || []).map(i => ({ ...i, data: IMG[i.id] || '' })) };
     const dd = ui.dd;
     const grp = (kind, name) => {
       const im = dd.images.filter(i => i.kind === kind);
@@ -560,7 +606,8 @@ function openDetail(id, edit) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:420px">
         <label class="f"><span class="l">Date</span><input type="date" id="ddDate" value="${esc(dd.date)}"></label>
         <label class="f"><span class="l">Email time</span><input type="time" id="ddTime" value="${esc(dd.time)}"></label></div>
-      ${grp('chat', 'Conversation with the agent')}${grp('instruction', 'Email Confirmation')}
+      <div class="imgrem"><div>${grp('chat', 'Conversation with the agent')}${grp('instruction', 'Email Confirmation')}</div>
+        <aside class="remcard" style="margin-top:18px"><h3>Remark</h3><textarea id="ddRemark" rows="8" placeholder="${REMARK_WM}" aria-label="Remark"${ui.verifier ? '' : ' disabled'}>${esc(dd.vRemark)}</textarea><p class="hint" style="margin:6px 0 0">${ui.verifier ? (c.vRemarkAt ? `Posted ${fmtStamp(c.vRemarkAt)}. Saving a change records a new date and time.` : 'Saving records the date and time.') : 'Turn on Verify mode to write a remark.'}</p></aside></div>
       <div class="actions"><button class="btn primary" data-act="ddSave">Save changes</button><button class="btn" data-act="ddCancel">Cancel</button><button class="btn" data-act="edit" data-id="${c.id}" style="margin-left:auto">More fields (team lead, type, result)</button></div>`;
   } else {
     ui.dd = null; ui.curDetail = id;
@@ -581,13 +628,13 @@ function openDetail(id, edit) {
         ${row('Result', c.result)}${row('Instruction to agent', c.instruction)}${row('Remarks', c.remarks)}
         ${row('Last updated', c.updatedBy ? `${c.updatedBy}, ${new Date(c.updatedAt).toLocaleString()}` : '')}
       </dl>
-      <h3>Conversation with the agent</h3>${gal('chat')}
-      <h3 style="margin-top:16px">Email Confirmation</h3>${gal('instruction')}
+      <div class="imgrem"><div><h3>Conversation with the agent</h3>${gal('chat')}
+      <h3 style="margin-top:16px">Email Confirmation</h3>${gal('instruction')}</div>${remarkPanel(c)}</div>
       <div class="actions"><button class="btn primary" data-act="editImages" data-id="${c.id}"${locked(c) ? ' disabled' : ''}>Edit</button><button class="btn" data-act="edit" data-id="${c.id}"${locked(c) ? ' disabled' : ''}>Edit all details</button><button class="btn danger" data-act="del" data-id="${c.id}"${locked(c) ? ' disabled' : ''}>Delete</button>${locked(c) ? `<span class="muted" style="align-self:center;font-size:13px">${LOCK_MSG}</span>` : ''}<button class="btn" data-act="closeDetail" style="margin-left:auto">Close</button></div>`;
   }
   const d = $('#detail'); if (!d.open) d.showModal();
 }
-function syncDd() { if (!ui.dd) return; const d = $('#ddDate'), t = $('#ddTime'), k = $('#ddConcern'); if (d) ui.dd.date = d.value; if (t) ui.dd.time = t.value; if (k) ui.dd.concern = k.value; }
+function syncDd() { if (!ui.dd) return; const d = $('#ddDate'), t = $('#ddTime'), k = $('#ddConcern'), r = $('#ddRemark'); if (d) ui.dd.date = d.value; if (t) ui.dd.time = t.value; if (k) ui.dd.concern = k.value; if (r && !r.disabled) ui.dd.vRemark = r.value; }
 function pickImages(multiple, cb) {
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = !!multiple;
   inp.onchange = async () => { const out = []; for (const f of inp.files) { try { out.push({ name: f.name, data: await fileToData(f) }); } catch (e) { toast(`Couldn't read ${f.name}.`); } } cb(out); };
@@ -599,6 +646,7 @@ async function ddSave() {
   if (!dd.concern.trim()) { toast('The concern cannot be empty.'); return; }
   const oldM = (c.date || '').slice(0, 7);
   c.date = dd.date; c.time = dd.time; c.concern = dd.concern.trim();
+  if (ui.verifier) setRemark(c, dd.vRemark);
   if (dd.date && (c.month === oldM || !c.month)) c.month = dd.date.slice(0, 7);
   const keep = new Set(dd.images.map(i => i.id));
   for (const i of (c.images || [])) if (!keep.has(i.id)) await imgDel(i.id);
@@ -616,10 +664,11 @@ function viewPost() {
   const cm = c ? c.month : date.slice(0, 7);
   return `
   <h2>${c ? 'Edit case' : 'Post a case'}</h2>
-  <p class="hint" style="margin-bottom:16px">New cases start as waiting. Glenn sets VF Inbox to Yes in Verify mode, and only then do the points count.</p>
+  <p class="hint" style="margin-bottom:6px">New cases start as waiting. Glenn sets VF Inbox to Yes in Verify mode, and only then do the points count.</p>
+  <p class="hint" style="margin-bottom:16px">Required before you can post: <b>date, email time, concern (subject), type of issue</b> and an <b>Email Confirmation</b> screenshot.</p>
   <div class="formgrid" id="caseForm">
-    <label class="f"><span class="l">Date</span><input type="date" id="fDate" value="${esc(date)}"></label>
-    <label class="f"><span class="l">Email time</span><input type="time" id="fTime" value="${v('time')}"><small class="muted" id="periodNote" style="font-weight:400"></small></label>
+    <label class="f"><span class="l">Date <span class="req" aria-hidden="true">*</span></span><input type="date" id="fDate" value="${esc(date)}" required></label>
+    <label class="f"><span class="l">Email time <span class="req" aria-hidden="true">*</span></span><input type="time" id="fTime" required value="${v('time')}"><small class="muted" id="periodNote" style="font-weight:400"></small></label>
     <label class="f"><span class="l">Counts toward month</span><select id="fCM">${months.map(k => `<option value="${k}"${k === cm ? ' selected' : ''}>${monthLabel(k)}</option>`).join('')}</select></label>
     <label class="f"><span class="l">Team lead</span><select id="fLeadSel">${leads.map(l => `<option value="${esc(l)}"${c && c.lead === l ? ' selected' : ''}>${esc(title(l))}</option>`).join('')}<option value="__new">Someone else…</option></select><input type="text" id="fLeadNew" placeholder="Full name" style="margin-top:6px" hidden></label>
     <div class="f w3"><span class="l" id="colabL">Colab / Tucson supp</span><div class="chips" id="colabChips"></div>
@@ -628,8 +677,8 @@ function viewPost() {
     <label class="f w3"><span class="l">Tucson supp took over</span><input type="text" id="fTook" list="suppList" value="${v('took')}"></label>
     <label class="f w3"><span class="l">Service ID</span><input type="text" id="fSid" value="${v('serviceId')}" inputmode="numeric"></label>
     <label class="f w3"><span class="l">Case number</span><input type="text" id="fCase" value="${v('caseNo')}"></label>
-    <label class="f w6"><span class="l">Concern (email subject)</span><textarea id="fConcern" rows="2">${v('concern')}</textarea></label>
-    <fieldset class="w6" style="border:0;padding:0;margin:0"><legend class="l" style="font-weight:600;font-size:13.5px;padding:0;margin-bottom:4px">Type of issue</legend>
+    <label class="f w6"><span class="l">Concern (email subject) <span class="req" aria-hidden="true">*</span></span><textarea id="fConcern" rows="2" required>${v('concern')}</textarea></label>
+    <fieldset class="w6" style="border:0;padding:0;margin:0"><legend class="l" style="font-weight:600;font-size:13.5px;padding:0;margin-bottom:4px">Type of issue <span class="req" aria-hidden="true">*</span></legend>
       <div class="types">
         <label><input type="radio" name="fType" value="Simple"${c && c.type === 'Simple' ? ' checked' : ''}><b>Simple</b><small>1 point once verified</small></label>
         <label><input type="radio" name="fType" value="Complex"${c && c.type === 'Complex' ? ' checked' : ''}><b>Complex</b><small>3 points once verified</small></label>
@@ -638,9 +687,12 @@ function viewPost() {
     <label class="f w6"><span class="l">How you instructed the agent</span><textarea id="fInstr" rows="2" placeholder="For example: asked the agent to pull logs and call the site back">${v('instruction')}</textarea></label>
     <label class="f w6"><span class="l">Remarks</span><input type="text" id="fRem" value="${v('remarks')}"></label>
   </div>
-  <div class="zones" style="margin-top:24px;max-width:920px">
+  <div class="zones" style="margin-top:24px;max-width:1100px">
     ${zone('chat', 'Conversation with the agent', 'Screenshots that show you spoke to the agent.')}
-    ${zone('instruction', 'Email Confirmation', 'Screenshots of Email Communication.')}
+    ${zone('instruction', 'Email Confirmation <span class="req" aria-hidden="true">*</span>', 'Screenshots of Email Communication. Required.')}
+    <section class="remcard"><h3>Remark</h3><p class="hint">Written by Glenn F or Seth R after checking the case.</p>
+      <textarea id="fVRemark" rows="7" placeholder="${REMARK_WM}" aria-label="Remark"${ui.verifier ? '' : ' disabled'}>${esc(c ? c.vRemark || '' : '')}</textarea>
+      ${c && c.vRemarkAt ? `<p class="hint" style="margin:6px 0 0">Posted ${fmtStamp(c.vRemarkAt)}</p>` : ''}${ui.verifier ? '' : '<p class="hint" style="margin:6px 0 0">Turn on Verify mode to write a remark.</p>'}</section>
   </div>
   <p class="err" id="formErr" role="alert" hidden></p>
   <div class="actions"><button class="btn primary" data-act="saveCase">${c ? 'Save changes' : 'Post case'}</button><button class="btn" data-act="cancelPost">Cancel</button></div>`;
@@ -681,7 +733,7 @@ async function addFiles(files, kind) {
     try { ui.draft.images.push({ id: uid(), kind, name: f.name && f.name !== 'image.png' ? f.name : `Screenshot ${ui.draft.images.length + 1}.jpg`, data: await fileToData(f), isNew: true }); }
     catch (e) { toast(`Couldn't read ${f.name}.`); }
   }
-  drawThumbs();
+  drawThumbs(); $$('.drop.bad').forEach(x => x.classList.remove('bad'));
 }
 function drawColab() {
   const el = $('#colabChips'); if (!el) return;
@@ -704,13 +756,16 @@ async function saveCase() {
   const lead = ($('#fLeadSel').value === '__new' ? val('fLeadNew') : $('#fLeadSel').value).toUpperCase();
   const type = ($('input[name=fType]:checked') || {}).value || '';
   addColab(true);
-  const errs = [];
-  if (!val('fDate')) errs.push('Choose the date');
-  if (!val('fConcern')) errs.push('Enter the concern');
-  if (!lead) errs.push('Choose the team lead');
-  if (!type) errs.push('Choose Simple or Complex');
+  const errs = [], bad = [];
+  $$('.bad').forEach(x => x.classList.remove('bad'));
+  if (!val('fDate')) { errs.push('Date'); bad.push('#fDate'); }
+  if (!val('fTime')) { errs.push('Email time'); bad.push('#fTime'); }
+  if (!val('fConcern')) { errs.push('Concern (subject)'); bad.push('#fConcern'); }
+  if (!lead) { errs.push('Team lead'); bad.push('#fLeadNew'); }
+  if (!type) { errs.push('Type of issue'); bad.push('.types'); }
+  if (!ui.edit && !ui.draft.images.some(i => i.kind === 'instruction')) { errs.push('Email Confirmation screenshot'); bad.push('[data-zone=instruction] .drop'); }
   const eb = $('#formErr');
-  if (errs.length) { eb.textContent = errs.join('. ') + '.'; eb.hidden = false; return; }
+  if (errs.length) { bad.forEach(s => { const el = $(s); if (el) el.classList.add('bad'); }); eb.textContent = 'Please complete: ' + errs.join(', ') + '.'; eb.hidden = false; eb.scrollIntoView({ block: 'center' }); return; }
   eb.hidden = true;
   const old = ui.edit ? S.cases.find(x => x.id === ui.edit) : null;
   if (old && locked(old)) { toast(LOCK_MSG); return; }
@@ -722,6 +777,7 @@ async function saveCase() {
   for (const i of (c.images || [])) if (!keep.has(i.id)) await imgDel(i.id);
   for (const i of ui.draft.images) if (i.isNew) await imgPut(i.id, i.data, c.id);
   c.images = ui.draft.images.map(({ id, kind, name }) => ({ id, kind, name }));
+  if (ui.verifier && $('#fVRemark')) setRemark(c, $('#fVRemark').value);
   ui.draft.colab.forEach(n => { if (!S.supps.includes(n)) S.supps.push(n); }); S.supps.sort();
   if (!old) S.cases.push(c);
   stamp(c); save();
@@ -754,15 +810,15 @@ function viewLoop() {
       <td><div class="dual" aria-hidden="true"><i class="a" style="width:${(r.came || 0) / mx * 100}%"></i><i class="b" style="width:${r.handled / mx * 100}%"></i></div></td>
       <td class="num">${r.came ? Math.round(r.handled / r.came * 100) + '%' : '—'}</td></tr>`).join('')
     : `<tr><td colspan="6" class="empty">Nothing to show yet.</td></tr>`;
-  const dayRows = rowsAll.filter(r => r.date === ui.loopDay), vsN = S.loop.filter(r => r.date === ui.loopDay && isVS(r.email)).length;
+  const dayRows = rowsAll.filter(r => r.date === ui.loopDay), vsN = S.loop.filter(r => r.date === ui.loopDay && isVS(r.email)).length, repN = loopSplit().repeats.filter(r => r.date === ui.loopDay).length;
   const prev = [...days].reverse().find(d => d < ui.loopDay), next = days.find(d => d > ui.loopDay);
   const h = S.cases.filter(c => c.date === ui.loopDay);
   const link = e => /^https?:\/\//.test(e) ? `<a href="${esc(e)}" target="_blank" rel="noopener">${esc(e.split('/').pop())}</a>` : esc(e);
   return `
   <div class="tools"><h2 style="margin:0">Loop daily list</h2></div>
-  <p class="hint">Cases from the Escalation page in Loop, and how many of them we handled. VS tickets are not counted.</p>
+  <p class="hint">Cases from the Escalation page in Loop, and how many of them we handled. VS tickets and cases already listed on an earlier day are not counted.</p>
   <details class="card plain" open style="margin-top:8px"><summary>Paste a day from Loop</summary>
-    <p class="hint" style="margin-top:8px">Open the day's page in Loop, select the table, copy it, and paste it below. Every row counts except VS tickets, which are skipped.</p>
+    <p class="hint" style="margin-top:8px">Open the day's page in Loop, select the table, copy it, and paste it below. Every row counts except VS tickets and cases that were already listed on an earlier day, which are skipped.</p>
     <div style="margin-bottom:10px"><label class="f"><span class="l">Day</span><input type="date" id="impDate" value="${ui.loopDay}" style="width:auto"></label></div>
     <textarea id="impText" rows="5" placeholder="Paste the table here" aria-label="Pasted Loop table"></textarea>
     <p class="hint" id="impPreview" style="margin:8px 0 0"></p>
@@ -779,8 +835,8 @@ function viewLoop() {
 
   <div id="dayPanel" style="margin-top:30px">
     <div class="tools"><h3 style="margin:0">${fmtDay(ui.loopDay, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h3>
-      <span><button class="btn small" data-act="loopGo" data-d="${prev || ''}"${prev ? '' : ' disabled'}>Earlier day</button> <button class="btn small" data-act="loopGo" data-d="${next || ''}"${next ? '' : ' disabled'}>Later day</button> ${dayRows.length || vsN ? `<button class="btn small danger" data-act="clearDay">Remove this day</button>` : ''}</span></div>
-    <p class="muted" style="margin:0 0 8px"><b>${dayRows.length}</b> came in, <b>${h.length}</b> handled${vsN ? `. ${plural(vsN, 'VS ticket')} not counted` : ''}.</p>
+      <span><button class="btn small" data-act="loopGo" data-d="${prev || ''}"${prev ? '' : ' disabled'}>Earlier day</button> <button class="btn small" data-act="loopGo" data-d="${next || ''}"${next ? '' : ' disabled'}>Later day</button> ${dayRows.length || vsN || repN ? `<button class="btn small danger" data-act="clearDay">Remove this day</button>` : ''}</span></div>
+    <p class="muted" style="margin:0 0 8px"><b>${dayRows.length}</b> came in, <b>${h.length}</b> handled${vsN || repN ? `. Not counted: ${[vsN && plural(vsN, 'VS ticket'), repN && `${repN} repeated from earlier days`].filter(Boolean).join(' and ')}` : ''}.</p>
     <div class="tscroll"><table><thead><tr><th class="num" style="width:44px">#</th><th>Email/JSD</th><th>Issue</th><th>Assign</th></tr></thead><tbody>
       ${dayRows.length ? dayRows.map((r, i) => `<tr><td class="num muted">${i + 1}</td><td class="concern">${link(r.email)}</td><td>${esc(r.issue) || '<span class="muted">—</span>'}</td><td>${esc(r.assigned) || '<span class="muted">—</span>'}</td></tr>`).join('') : `<tr><td colspan="4" class="empty">No Loop cases saved for this day. Paste the day's table above.</td></tr>`}
     </tbody></table></div></div>`;
@@ -819,9 +875,21 @@ function gridToLoop(grid) {
   return rows.map(r => { const issue = ii >= 0 ? clean(r[ii]) : ''; return { email: clean(r[ci]) || issue, issue: clean(r[ci]) ? issue : '', assigned: ai >= 0 ? clean(r[ai]).replace(/^@\s*/, '') : '' }; }).filter(r => r.email);
 }
 const importGrid = () => ui.impGrid || parseTSV($('#impText').value);
+function impSplit(all, d) {
+  const prior = new Set(), seen = new Set(), keep = []; let vs = 0, rep = 0;
+  S.loop.forEach(r => { if (!isVS(r.email) && r.date < d) prior.add(keyOf(r)); });
+  all.forEach(r => {
+    if (isVS(r.email)) { vs++; return; }
+    const k = subjKey(r.email);
+    if (k && (prior.has(k) || seen.has(k))) { rep++; return; }
+    seen.add(k); keep.push(r);
+  });
+  return { keep, vs, rep };
+}
 function previewImp() {
-  const rows = gridToLoop(importGrid()), vs = rows.filter(r => isVS(r.email)).length, keep = rows.length - vs, txt = $('#impText').value.trim();
-  $('#impPreview').textContent = rows.length ? `Found ${plural(keep, 'case')} to count${vs ? ` and ${plural(vs, 'VS ticket')} that will be skipped` : ''}.` : (txt ? 'No rows found. Copy the whole table, including the heading row.' : '');
+  const rows = gridToLoop(importGrid()), d = ($('#impDate') || {}).value || ui.loopDay, sp = impSplit(rows, d), txt = $('#impText').value.trim();
+  const skipped = [sp.vs && plural(sp.vs, 'VS ticket'), sp.rep && `${sp.rep} repeated from earlier days`].filter(Boolean).join(' and ');
+  $('#impPreview').textContent = rows.length ? `Found ${plural(sp.keep.length, 'new case')} to count${skipped ? `. Skipped: ${skipped}` : ''}.` : (txt ? 'No rows found. Copy the whole table, including the heading row.' : '');
 }
 
 /* --------------------------------------------------------- leave and absence */
@@ -834,16 +902,16 @@ function viewLeave() {
   Object.entries(grid).forEach(([lead, days]) => { tot[lead] = Object.fromEntries(kinds.map(k => [k, 0])); Object.values(days).forEach(k => { if (tot[lead][k] !== undefined) tot[lead][k]++; }); });
   const marked = new Set(Object.keys(grid));
   const names = leaveNames().filter(n => (!q || title(n).toLowerCase().includes(q) || n.toLowerCase().includes(q)) && (!ui.lvOnly || marked.has(n) || (!q && leadsList().includes(n))));
-  const months = allMonths(), out = S.leave.filter(L => L.from <= today && (L.to || L.from) >= today && !['RD', 'PR'].includes(L.type));
+  const months = allMonths(), out = S.leave.filter(L => L.from <= today && (L.to || L.from) >= today && !['RD', 'PR', 'HO'].includes(L.type));
   const e = ui.leaveEdit ? S.leave.find(x => x.id === ui.leaveEdit) : null, known = leaveNames();
   const dow = d => new Date(y, mo - 1, d).getDay();
   const head = Array.from({ length: dim }, (_, i) => `<th class="${[0, 6].includes(dow(i + 1)) ? 'we' : ''}" scope="col">${i + 1}<br><span class="muted">${'SMTWTFS'[dow(i + 1)]}</span></th>`).join('');
-  const rows = names.map(l => `<tr><td>${esc(title(l))}</td>${Array.from({ length: dim }, (_, i) => { const k = (grid[l] || {})[i + 1]; return k ? `<td class="k k-${k}" title="${LEAVE[k]}">${k}</td>` : `<td class="${[0, 6].includes(dow(i + 1)) ? 'we' : ''}"></td>`; }).join('')}</tr>`).join('');
+  const rows = names.map(l => `<tr><td>${esc(title(l))}</td>${Array.from({ length: dim }, (_, i) => { const k = (grid[l] || {})[i + 1]; return k ? `<td class="k k-${k}" title="${leaveLabel(k)}">${k}</td>` : `<td class="${[0, 6].includes(dow(i + 1)) ? 'we' : ''}"></td>`; }).join('')}</tr>`).join('');
   const list = S.leave.filter(L => (L.from.slice(0, 7) === m || (L.to || L.from).slice(0, 7) === m || (L.from < m + '-01' && (L.to || L.from) > m + '-28')) && (!q || title(L.lead).toLowerCase().includes(q))).sort((a, b) => b.from.localeCompare(a.from));
   const nImp = S.leave.filter(L => L.src === 'attendance').length;
   return `
   <div class="tools"><h2 style="margin:0">Leave and absence</h2></div>
-  <p class="hint">${out.length ? `Out today: <b>${out.map(L => `${esc(title(L.lead))} (${LEAVE[L.type]})`).join(', ')}</b>.` : 'Nobody is marked out today.'}</p>
+  <p class="hint">${out.length ? `Out today: <b>${out.map(L => `${esc(title(L.lead))} (${leaveLabel(L.type)})`).join(', ')}</b>.` : 'Nobody is marked out today.'}</p>
   ${lvxCard()}
   <div class="card plain" style="background:var(--soft);margin-top:14px"><h3>${e ? 'Edit entry' : 'Tag leave or absence by hand'}</h3>
     <div class="formgrid" style="max-width:none">
@@ -864,11 +932,11 @@ function viewLeave() {
 
   <h3 style="margin-top:26px">Days in ${monthLabel(m)}</h3>
   <div class="tscroll"><table><thead><tr><th>Name</th>${kinds.map(k => `<th class="num">${LEAVE[k]}</th>`).join('')}<th class="num">Leave and absent days</th></tr></thead><tbody>
-    ${names.map(l => { const t2 = tot[l] || Object.fromEntries(kinds.map(k => [k, 0])), sum = kinds.filter(k => !['RD', 'PR'].includes(k)).reduce((a, k) => a + (t2[k] || 0), 0); return `<tr><td>${esc(title(l))}</td>${kinds.map(k => `<td class="num">${t2[k] || '—'}</td>`).join('')}<td class="num"><b>${sum || '—'}</b></td></tr>`; }).join('')}</tbody></table></div>
+    ${names.map(l => { const t2 = tot[l] || Object.fromEntries(kinds.map(k => [k, 0])), sum = kinds.filter(k => !['RD', 'PR', 'HO'].includes(k)).reduce((a, k) => a + (t2[k] || 0), 0); return `<tr><td>${esc(title(l))}</td>${kinds.map(k => `<td class="num">${t2[k] || '—'}</td>`).join('')}<td class="num"><b>${sum || '—'}</b></td></tr>`; }).join('')}</tbody></table></div>
 
   <div class="bar-row" style="margin-top:26px;margin-bottom:6px"><h3 style="margin:0">Entries</h3>${nImp ? `<button class="btn small danger" data-act="lvxClear">Remove the ${nImp} imported entries</button>` : ''}</div>
   <div class="tscroll"><table><thead><tr><th>Name</th><th>Type</th><th>Dates</th><th class="num">Days</th><th>Note</th><th></th></tr></thead><tbody>
-    ${list.length ? list.map(L => `<tr><td>${esc(title(L.lead))}</td><td><span class="lgd k-${L.type}">${L.type}</span>${LEAVE[L.type]}</td><td class="nowrap">${fmtDay(L.from, { month: 'short', day: 'numeric', year: 'numeric' })}${L.to && L.to !== L.from ? ' to ' + fmtDay(L.to, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</td><td class="num">${eachDay(L.from, L.to).length}</td><td>${esc(L.note) || '<span class="muted">—</span>'}${L.src === 'attendance' ? ' <span class="muted">(imported)</span>' : ''}</td><td class="nowrap"><button class="linklike" data-act="leaveEdit" data-id="${L.id}">Edit</button> &nbsp; <button class="linklike" data-act="leaveDel" data-id="${L.id}" style="color:var(--bad)">Delete</button></td></tr>`).join('') : `<tr><td colspan="6" class="empty">No leave or absence entered for ${monthLabel(m)}.</td></tr>`}
+    ${list.length ? list.map(L => `<tr><td>${esc(title(L.lead))}</td><td><span class="lgd k-${L.type}">${L.type}</span>${leaveLabel(L.type)}</td><td class="nowrap">${fmtDay(L.from, { month: 'short', day: 'numeric', year: 'numeric' })}${L.to && L.to !== L.from ? ' to ' + fmtDay(L.to, { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</td><td class="num">${eachDay(L.from, L.to).length}</td><td>${esc(L.note) || '<span class="muted">—</span>'}${L.src === 'attendance' ? ' <span class="muted">(imported)</span>' : ''}</td><td class="nowrap"><button class="linklike" data-act="leaveEdit" data-id="${L.id}">Edit</button> &nbsp; <button class="linklike" data-act="leaveDel" data-id="${L.id}" style="color:var(--bad)">Delete</button></td></tr>`).join('') : `<tr><td colspan="6" class="empty">No leave or absence entered for ${monthLabel(m)}.</td></tr>`}
   </tbody></table></div>`;
 }
 
@@ -897,9 +965,8 @@ function classify(remark, o) {
   if (/^vacation leave/.test(x)) return { type: 'VL', note: lw };
   if (/^sick leave|^sl\b/.test(x)) return { type: 'SL', note: lw };
   if (/^emergency leave|^el\b/.test(x)) return { type: 'EL', note: lw };
-  if (/^paternity/.test(x)) return { type: 'PL', note: lw };
-  if (/^ml\b|maternity/.test(x)) return { type: 'ML', note: lw };
-  if (x === 'restday' || x === 'holiday-restday') return o.rd ? { type: 'RD', note: '' } : null;
+  if (x === 'holiday' || x === 'holiday-restday') return o.ho ? { type: 'HO', note: x === 'holiday-restday' ? 'Holiday on a rest day' : '' } : null;
+  if (x === 'restday') return o.rd ? { type: 'RD', note: '' } : null;
   if (x === 'no login') return o.nl ? { type: 'ABS', note: 'No login' } : null;
   return null;
 }
@@ -930,7 +997,7 @@ async function readAttendance(files, merge) {
   if (bad.length) toast(`Could not use ${bad.join(', ')}. It needs Date and Remarks columns, plus an EmpName column or an "Employee Name:" line.`);
   if (!rows.length) return;
   const emps = [...new Set(rows.map(r => r.emp))], { map, missing } = matchLeads(emps), dates = rows.map(r => r.date).sort();
-  ui.lvx = { file: names.join(', '), rows, map, missing, nEmps: emps.length, off: prev ? prev.off : new Set(), all: prev ? prev.all : false, min: dates[0], max: dates[dates.length - 1], rd: prev ? prev.rd : true, pr: prev ? prev.pr : true, nl: prev ? prev.nl : false };
+  ui.lvx = { file: names.join(', '), rows, map, missing, nEmps: emps.length, off: prev ? prev.off : new Set(), all: prev ? prev.all : false, min: dates[0], max: dates[dates.length - 1], rd: prev ? prev.rd : true, pr: prev ? prev.pr : true, ho: prev ? prev.ho : true, nl: prev ? prev.nl : false };
   render();
 }
 const lvxWho = (x, r) => x.map[r.emp] || (x.all ? r.emp.toUpperCase().replace(/\s+/g, ' ') : '');
@@ -949,7 +1016,7 @@ function lvxCard() {
   const x = ui.lvx, input = `<input type="file" id="lvxFile" accept=".xls,.xlsx,.csv" multiple aria-label="Choose attendance exports">`;
   if (!x) return `<details class="card plain" open><summary>Auto-mark from an attendance export</summary><p class="hint" style="margin-top:8px">Choose one or more Excel exports from your attendance system: the report for all employees, or a single employee's report. Only ${esc(leadsList().map(title).join(', '))} are marked, found by surname. You can still tag days by hand below.</p>${input}</details>`;
   const runs = lvxRuns(), cnt = {}; runs.forEach(r => { cnt[r.lead] ||= {}; cnt[r.lead][r.type] = (cnt[r.lead][r.type] || 0) + eachDay(r.from, r.to).length; });
-  const kinds = Object.keys(LEAVE).filter(k => (k !== 'RD' || x.rd) && (k !== 'PR' || x.pr)), people = lvxPeople(x), skipped = x.nEmps - Object.keys(x.map).length;
+  const kinds = Object.keys(LEAVE).filter(k => (k !== 'RD' || x.rd) && (k !== 'PR' || x.pr) && (k !== 'HO' || x.ho)), people = lvxPeople(x), skipped = x.nEmps - Object.keys(x.map).length;
   const found = n => Object.entries(x.map).filter(([, l]) => l === n).map(([e]) => e);
   return `<details class="card plain" open><summary>Auto-mark from an attendance export: ${esc(x.file)}</summary>
     <p class="hint" style="margin:8px 0">Dates ${fmtDay(x.min, { month: 'short', day: 'numeric', year: 'numeric' })} to ${fmtDay(x.max, { month: 'short', day: 'numeric', year: 'numeric' })}. Importing again replaces earlier imported entries for the same dates and keeps what you tagged by hand.</p>
@@ -959,6 +1026,7 @@ function lvxCard() {
     ${people.length ? people.map((p, i) => `<tr><td><input type="checkbox" data-lvxp="${i}"${x.off.has(p) ? '' : ' checked'} aria-label="Mark ${esc(title(p))}"></td><td>${esc(title(p))}</td><td class="muted">${esc(found(p).map(title).join('; ') || title(p))}</td>${kinds.map(k => `<td class="num">${(cnt[p] || {})[k] || '—'}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${kinds.length + 3}" class="empty">No one in this file matches the team leads.</td></tr>`}</tbody></table></div>
     <label style="display:block;margin:10px 0 2px"><input type="checkbox" id="lvxAll"${x.all ? ' checked' : ''}> Also include the other ${skipped} people in the file</label>
     <label style="display:block;margin:2px 0"><input type="checkbox" id="lvxPr"${x.pr ? ' checked' : ''}> Mark days they logged in (Present, including late and undertime)</label>
+    <label style="display:block;margin:2px 0"><input type="checkbox" id="lvxHo"${x.ho ? ' checked' : ''}> Mark holidays off (Holiday)</label>
     <label style="display:block;margin:2px 0"><input type="checkbox" id="lvxRd"${x.rd ? ' checked' : ''}> Mark rest days</label>
     <label style="display:block;margin:2px 0"><input type="checkbox" id="lvxNl"${x.nl ? ' checked' : ''}> Treat "No Login" days as absent</label>
     <div class="actions"><button class="btn primary" data-act="lvxApply"${runs.length ? '' : ' disabled'}>Mark ${plural(runs.length, 'period')}</button><button class="btn" data-act="lvxCancel">Cancel</button></div></details>`;
@@ -1002,7 +1070,7 @@ function buildExport(scopeMonths) {
     .sort((a, b) => a.month.localeCompare(b.month) || (a.date || '9').localeCompare(b.date || '9') || (a.time || '').localeCompare(b.time || ''));
   const loop = loopRows().filter(r => scopeMonths.includes(r.date.slice(0, 7))).sort((a, b) => a.date.localeCompare(b.date));
   const cs = {}; // Cases sheet
-  const CH = ['Month','Date','Email time','Period','Team lead','Colab / Tucson supp','Service ID','Case number','Concern','Type of issue','Result','Tucson supp took over','VF Inbox','Status','Points','Instruction to agent','Remarks','Agent conversation images','Instruction images'];
+  const CH = ['Month','Date','Email time','Period','Team lead','Colab / Tucson supp','Service ID','Case number','Concern','Type of issue','Result','Tucson supp took over','VF Inbox','Status','Points','Instruction to agent','Remarks','Agent conversation images','Email Confirmation images','Remark (Glenn F / Seth R)','Remark posted'];
   const put = (sh, r, c, cell) => { sh[`${String.fromCharCode(65 + c)}${r + 1}`] = cell; };
   CH.forEach((h, i) => put(cs, 0, i, { t: 's', v: h }));
   const s = v => ({ t: 's', v: v || '' });
@@ -1021,8 +1089,9 @@ function buildExport(scopeMonths) {
     put(cs, r, 15, s(c.instruction)); put(cs, r, 16, s(c.remarks));
     put(cs, r, 17, { t: 'n', v: (c.images || []).filter(x => x.kind === 'chat').length });
     put(cs, r, 18, { t: 'n', v: (c.images || []).filter(x => x.kind === 'instruction').length });
+    put(cs, r, 19, s(c.vRemark)); put(cs, r, 20, s(fmtStamp(c.vRemarkAt)));
   });
-  cs['!ref'] = `A1:S${cases.length + 1}`;
+  cs['!ref'] = `A1:U${cases.length + 1}`;
 
   // Summary
   const sm = {}; let r = 0;
@@ -1079,10 +1148,10 @@ function buildExport(scopeMonths) {
   const lv = {}; ['Team lead','Type','From','To','Days','Note'].forEach((h, i) => put(lv, 0, i, { t: 's', v: h }));
   const ents = S.leave.filter(L => scopeMonths.includes(L.from.slice(0, 7)) || scopeMonths.includes((L.to || L.from).slice(0, 7))).sort((a, b) => a.from.localeCompare(b.from));
   ents.forEach((L, i) => { const R = i + 2, to = L.to || L.from;
-    put(lv, i + 1, 0, s(L.lead)); put(lv, i + 1, 1, s(LEAVE[L.type])); put(lv, i + 1, 2, { t: 'n', v: serial(L.from), z: 'yyyy-mm-dd' }); put(lv, i + 1, 3, { t: 'n', v: serial(to), z: 'yyyy-mm-dd' });
+    put(lv, i + 1, 0, s(L.lead)); put(lv, i + 1, 1, s(leaveLabel(L.type))); put(lv, i + 1, 2, { t: 'n', v: serial(L.from), z: 'yyyy-mm-dd' }); put(lv, i + 1, 3, { t: 'n', v: serial(to), z: 'yyyy-mm-dd' });
     put(lv, i + 1, 4, { t: 'n', v: serial(to) - serial(L.from) + 1, f: `D${R}-C${R}+1` }); put(lv, i + 1, 5, s(L.note)); });
   lv['!ref'] = `A1:F${ents.length + 1}`; lv['!cols'] = [18,18,12,12,8,40].map(w => ({ wch: w }));
-  cs['!cols'] = [14,12,11,9,16,22,12,16,60,12,26,20,9,12,8,36,30,14,14].map(w => ({ wch: w }));
+  cs['!cols'] = [14,12,11,9,16,22,12,16,60,12,26,20,9,12,8,36,30,14,14,40,22].map(w => ({ wch: w }));
   sm['!cols'] = [16,16,14,17,16,8,20,18,16,3,36,8].map(w => ({ wch: w }));
   lp['!cols'] = [14,12,50,50,24].map(w => ({ wch: w }));
   cs['!autofilter'] = { ref: cs['!ref'] }; lp['!autofilter'] = { ref: lp['!ref'] };
@@ -1097,7 +1166,7 @@ function exportXlsx() {
     // Offline fallback: CSV of cases
     const x = buildExport(scope), rows = []; const cs = x.Cases;
     const maxR = x.counts.cases + 1;
-    for (let r = 1; r <= maxR; r++) rows.push(Array.from({ length: 19 }, (_, c) => { const k = `${String.fromCharCode(65 + c)}${r}`, cell = cs[k]; return cell ? cell.v : ''; }));
+    for (let r = 1; r <= maxR; r++) rows.push(Array.from({ length: 21 }, (_, c) => { const k = `${String.fromCharCode(65 + c)}${r}`, cell = cs[k]; return cell ? cell.v : ''; }));
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
     download(new Blob(['\ufeff' + csv], { type: 'text/csv' }), name + '.csv');
     toast('Excel library did not load, so a CSV of the cases was saved instead.'); return;
@@ -1188,6 +1257,11 @@ document.addEventListener('click', async e => {
     case 'lvxClear': if (await askConfirm('Remove every entry that came from an attendance import? Entries you tagged by hand are kept.', 'Remove')) { S.leave = S.leave.filter(L => L.src !== 'attendance'); save(); render(); } break;
     case 'leaveDel': if (await askConfirm('Delete this leave entry?', 'Delete')) { S.leave = S.leave.filter(x => x.id !== id); save(); render(); } break;
     case 'closeDetail': $('#detail').close(); break;
+    case 'saveRemark': {
+      const c = S.cases.find(x => x.id === id); if (!c) break;
+      const ta = $('#dRemark'), changed = setRemark(c, ta ? ta.value : '');
+      if (changed) { stamp(c); save(); toast(c.vRemark ? 'Remark saved' : 'Remark removed'); } else toast('No change to save.');
+      openDetail(c.id); renderCaseRows(); break; }
     case 'edit': if (locked(S.cases.find(x => x.id === id))) { toast(LOCK_MSG); break; } $('#detail').close(); startPost(id); break;
     case 'del': {
       const c = S.cases.find(x => x.id === id);
@@ -1213,12 +1287,12 @@ document.addEventListener('click', async e => {
       const all = gridToLoop(importGrid()), d = $('#impDate').value;
       if (!d) { toast('Choose the day first.'); break; }
       if (!all.length) { toast('Paste the table from Loop first.'); break; }
-      const rows = all.filter(r => !isVS(r.email)), vs = all.length - rows.length;
+      const sp = impSplit(all, d), rows = sp.keep, vs = sp.vs, rep = sp.rep;
       const have = new Set(S.loop.map(r => [r.date, r.email, r.issue].join('|').toLowerCase()));
       const add = rows.filter(r => { const k = [d, r.email, r.issue].join('|').toLowerCase(); if (have.has(k)) return false; have.add(k); return true; });
       S.loop.push(...add.map(r => ({ id: loopId(d, r.email, r.issue), date: d, ...r }))); S.loop.sort((a, b) => a.date.localeCompare(b.date)); save();
       ui.loopDay = d; ui.impGrid = null; if (ui.loopView === 'day') ui.loopMonth = d.slice(0, 7);
-      toast(`Added ${plural(add.length, 'case')}${vs ? `, skipped ${plural(vs, 'VS ticket')}` : ''}${rows.length - add.length ? `, ${rows.length - add.length} already saved` : ''}`); render(); break; }
+      toast(`Added ${plural(add.length, 'case')}${vs ? `, skipped ${plural(vs, 'VS ticket')}` : ''}${rep ? `, ${rep} repeated from earlier days` : ''}${rows.length - add.length ? `, ${rows.length - add.length} already saved` : ''}`); render(); break; }
     case 'clearDay': {
       if (!await askConfirm(`Remove all Loop rows saved for ${fmtDay(ui.loopDay, { month: 'long', day: 'numeric' })}?`, 'Remove')) break;
       S.loop = S.loop.filter(r => r.date !== ui.loopDay); save(); render(); break; }
@@ -1244,6 +1318,8 @@ const caseImgList = c => (c.images || []).map(i => ({ id: i.id, src: IMG[i.id], 
 
 document.addEventListener('change', e => {
   const t = e.target;
+  if (t.classList && t.classList.contains('bad')) t.classList.remove('bad');
+  if (t.name === 'fType') $$('.types.bad').forEach(x => x.classList.remove('bad'));
   if (t.id === 'verifier') { ui.verifier = t.checked; if ($('#detail').open) $('#detail').close(); render(); return; }
   if (t.dataset.vf) { const c = S.cases.find(x => x.id === t.dataset.vf); c.vf = t.value; stamp(c); save(); renderCaseRows(); if ($('#detail').open) openDetail(c.id); toast(`VF Inbox set to ${t.value || 'Waiting'}`); return; }
   if (t.id === 'dMonth') { setMonth(t.value); render(); return; }
@@ -1251,6 +1327,7 @@ document.addEventListener('change', e => {
   if (t.id === 'fLead') { ui.f.lead = t.value; renderCaseRows(); }
   if (t.id === 'fType') { ui.f.type = t.value; renderCaseRows(); }
   if (t.id === 'fStatus') { ui.f.status = t.value; renderCaseRows(); }
+  if (t.id === 'impDate') { previewImp(); return; }
   if (t.id === 'lvLead') { const n = $('#lvLeadNew'); n.hidden = t.value !== '__new'; if (!n.hidden) n.focus(); return; }
   if (t.id === 'lvOnly') { ui.lvOnly = t.checked; render(); return; }
   if (t.id === 'lvxFile' && t.files[0]) { readAttendance([...t.files], false); t.value = ''; return; }
@@ -1258,6 +1335,7 @@ document.addEventListener('change', e => {
   if (t.dataset.lvxp !== undefined) { const nm = lvxPeople(ui.lvx)[+t.dataset.lvxp]; if (t.checked) ui.lvx.off.delete(nm); else ui.lvx.off.add(nm); render(); return; }
   if (t.id === 'lvxAll') { ui.lvx.all = t.checked; render(); return; }
   if (t.id === 'lvxRd') { ui.lvx.rd = t.checked; render(); return; }
+  if (t.id === 'lvxHo') { ui.lvx.ho = t.checked; render(); return; }
   if (t.id === 'lvxPr') { ui.lvx.pr = t.checked; render(); return; }
   if (t.id === 'lvxNl') { ui.lvx.nl = t.checked; render(); return; }
   if (t.id === 'xMonth') { ui.exportMonth = t.value; render(); }
@@ -1266,7 +1344,7 @@ document.addEventListener('change', e => {
   if (t.id === 'xlUpd') { ui.xl.updVf = t.checked; render(); return; }
   if (t.id === 'lpMonth') { if (t.value) setMonth(t.value); else ui.loopMonth = ''; render(); }
   if (t.id === 'lvMonth') { setMonth(t.value); render(); }
-  if (t.id === 'ddTime' || t.id === 'ddDate' || t.id === 'ddConcern') syncDd();
+  if (t.id === 'ddTime' || t.id === 'ddDate' || t.id === 'ddConcern' || t.id === 'ddRemark') syncDd();
   if (t.id === 'fLeadSel') { const n = $('#fLeadNew'); n.hidden = t.value !== '__new'; if (!n.hidden) n.focus(); }
   if (t.id === 'fDate') {
     const cm = $('#fCM'), m = t.value.slice(0, 7);
@@ -1279,6 +1357,7 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('input', e => {
   const t = e.target;
+  if (t.classList && t.classList.contains('bad')) t.classList.remove('bad');
   if (t.id === 'lvSearch') { ui.lvQ = t.value; clearTimeout(window.__lvT); window.__lvT = setTimeout(() => { render(); const s = $('#lvSearch'); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }, 150); return; }
   if (t.id === 'fQ') { ui.f.q = t.value; renderCaseRows(); }
   if (t.id === 'fTime') updatePeriodNote();
